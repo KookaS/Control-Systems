@@ -1,5 +1,10 @@
-# Automatique-et-commande-num-rique
+# Automatique-et-commande-numérique
+
 EPFL project | Automatique et commande numérique
+
+## Matlab 
+
+https://ch.mathworks.com/help/matlab/matlab_prog/set-up-git-source-control.html
 
 ## Generate SSH
     ssh-keygen
