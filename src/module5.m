@@ -13,7 +13,7 @@ Jmod = 3.944e-04;
 Jbr = 0.0037;
 Jm = Jmod + Jmot*Kg^2;
 
-%% 5.1
+%% 5.1 Discrete-time model
 
 a1 = (Rm *b + Kg^2 * Km ^ 2)/(Rm*Jm);
 A = [-a1, 0, 0, Ks/Jm;
@@ -32,25 +32,26 @@ Q = C.' .* C;
 R = 1e-2;   %remains with less than 10
 K = lqr(A, B, Q, R);
 sys_lqr = ss(A-B*K, B, C-D*K, D);
-G = tf(sys_lqr);
+Gcl = tf(sys_lqr);
 
 Ts = 2*pi/10/40;
-% fcl = 10/2/pi;
 s = tf('s'); 
-G = (Kg*Km*Ks*Ka)/((Jbr*s^2 + Ks)*(Rm*Jm*s^2 + Rm*b*s + Km^2 * Kg^2 *s) + Rm*Ks*Jbr*s^2)
-% zoh = c2d(G,Ts,'zoh');
-% zpm = c2d(G,Ts,'matched');
-% tustin = c2d(G,Ts,'tustin');
-% 
-% figure()
-% step(G, zoh, zpm, tustin)
-% legend('continuous', 'zoh', 'zero-pole', 'tustin')
-% 
-% figure()
-% bode(G, zoh, zpm, tustin)
-% legend('continuous', 'zoh', 'zero-pole', 'tustin')
+zoh = c2d(Gcl,Ts,'zoh');
+zpm = c2d(Gcl,Ts,'matched');
+tustin = c2d(Gcl,Ts,'tustin');
 
-%% 5.2
+figure
+step(Gcl, zoh, zpm, tustin)
+legend('continuous', 'zoh', 'zero-pole', 'tustin')
+
+figure
+bode(Gcl, zoh, zpm, tustin)
+legend('continuous', 'zoh', 'zero-pole', 'tustin')
+
+%% 5.2 RST controller design
+
+G = (Kg*Km*Ks*Ka)/((Jbr*s^2 + Ks)*(Rm*Jm*s^2 + Rm*b*s + Km^2 * Kg^2 *s) + Rm*Ks*Jbr*s^2)
+
 Hc = tf([1, 2*0.8*10, 10^2], 1) % desired continuous poles
 Pc = zero(Hc)
 z = tf('z'); 
@@ -59,9 +60,7 @@ Pd = tfdata(Hd, 'v')
 
 zoh = c2d(G,Ts,'zoh');
 sys = tf(zoh);
-[B, A] = tfdata(sys, 'v');  % (b1*q^-1 + b23q^-2 + ...)/(1 + a1*q^-1 + ...)
-A
-B
+[B, A] = tfdata(sys, 'v')  % (b1*q^-1 + b23q^-2 + ...)/(1 + a1*q^-1 + ...)
 A = conv(A,[1 -1])
 B = conv(B, [1 1])
 
@@ -90,6 +89,7 @@ for i = 1:nR+1
 end
 S
 R
+
 T = [];
 % T = Pd / evalfr(tf(Bprev, 1), 1)   % different dynamic tracking and regulation
 % T = evalfr(tf(Pd, 1), 1) / evalfr(tf(Bprev, 1), 1)   %same dynamic tracking and regulation
@@ -101,15 +101,6 @@ if nP > nA + nB + d -1
     error('P does not fit the required size')
 end
 
-
 sys_int = tf(conv(B,T),P,Ts,'variable','z^-1')
 figure
 step(sys_int)
-
-
-
-
-
-
-
-
