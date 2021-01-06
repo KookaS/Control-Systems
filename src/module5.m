@@ -34,11 +34,10 @@ K = lqr(A, B, Q, R);
 sys_lqr = ss(A-B*K, B, C-D*K, D);
 G = tf(sys_lqr);
 
-Ts = 2*pi/10/40;    %CHECK HERE!!!!!!
-fcl = 10/2/pi;
-% s = tf('s'); 
-% G = (Kg*Km*Ks*Ka)/((Jbr*s^2 + Ks)*(Rm*Jm*s^2 + Rm*b*s + Km^2 * Kg^2 *s) + Rm*Ks*Jbr*s^2)
-
+Ts = 2*pi/10/40;
+% fcl = 10/2/pi;
+s = tf('s'); 
+G = (Kg*Km*Ks*Ka)/((Jbr*s^2 + Ks)*(Rm*Jm*s^2 + Rm*b*s + Km^2 * Kg^2 *s) + Rm*Ks*Jbr*s^2)
 % zoh = c2d(G,Ts,'zoh');
 % zpm = c2d(G,Ts,'matched');
 % tustin = c2d(G,Ts,'tustin');
@@ -52,59 +51,35 @@ fcl = 10/2/pi;
 % legend('continuous', 'zoh', 'zero-pole', 'tustin')
 
 %% 5.2
+Hc = tf([1, 2*0.8*10, 10^2], 1) % desired continuous poles
+Pc = zero(Hc)
+z = tf('z'); 
+Hd = (z - exp(Pc(1)*Ts))*(z - exp(Pc(2)*Ts))    % desired discrete poles
+Pd = tfdata(Hd, 'v')
 
-% pole placement
-H = tf([1, 2*0.8*10, 10^2], 1);
-Pi = tzero(H);
-m = real(max(Pi));   % no imaginary part
-
-% Pc = [Pi; 2*m; 4*m];
-% K= acker(A,B,Pc);
-% sys_lqr = ss(A-B*K, B, C-D*K, D);
-% sys_lqr_d = c2d(sys_lqr,Ts,'zoh');
-% sys_lqr_d = tf(sys_lqr_d);
-sys = ss(A, B, C, D);
-sys = c2d(sys_lqr,Ts,'zoh');
-sys = tf(sys);
-Ts = 200*pi/10/40; %CHECK HERE!!!!!!
-[B, A] = tfdata(sys, 'v');
-Pol = tfdata(H, 'v')
-A = conv(A,[1 -1]);
-B = conv(B, [1 1]);
-
+zoh = c2d(G,Ts,'zoh');
+sys = tf(zoh);
+[B, A] = tfdata(sys, 'v');  % (b1*q^-1 + b23q^-2 + ...)/(1 + a1*q^-1 + ...)
 A
+B
+A = conv(A,[1 -1])
+B = conv(B, [1 1])
+
 nA = length(A)-1
 nB = length(B)-1
-Bprev = B
-B = B(2:end)
 d = nA - nB
 nR = nA -1
 nS = nB + d - 1
 
-% Ifand only ifA(q?1) and q?dB(q?1) are coprime.
-% M = [[A'; 0;0;0], [0; A';0;0], [0;0; A';0],[0;0; 0;A'],[0;B'; 0;0; 0], [0;0;B'; 0; 0], [0;0; 0; B'; 0], [0;0;0; 0; B']]
-% x = inv(M) * [Pol';0;0;0;0;0]   % [1; s1; s2; ...; r0; r1; ...]
+% regulation simple
+% M = [[A'; 0;0;0], [0; A';0;0], [0;0; A';0],[0;0; 0;A'],[B'; 0;0; 0], [0;B'; 0; 0], [0; 0; B'; 0], [0;0; 0; B']]
+% x = inv(M) * [Pd';0;0;0;0;0]   % [1; s1; s2; ...; r0; r1; ...]
 
-% with integrator
-% M = [[A'; 0;0;0;0], [0; A';0;0;0], [0;0; A';0;0],[0;0; 0;A';0],[0;0; 0;0;A'],[0;0;B'; 0;0; 0;0],[0;0;0;B'; 0;0; 0], [0;0;0;0;B'; 0; 0], [0;0;0;0; 0; B'; 0], [0;0;0;0;0; 0; B']]
-% x = inv(M) * [Pol';0;0;0;0;0;0;0]   % [1; s1; s2; ...; r0; r1; ...]
-
-% with integrator and regulator
-M = [[A'; 0;0;0;0], [0; A';0;0;0], [0;0; A';0;0],[0;0; 0;A';0],[0;0; 0;0;A'],[0;B'; 0;0; 0;0],[0;0;B'; 0;0; 0], [0;0;0;B'; 0; 0], [0;0;0; 0; B'; 0], [0;0;0;0; 0; B']]
-x = inv(M) * [Pol';0;0;0;0;0;0;0]   % [1; s1; s2; ...; r0; r1; ...]
-
-
-% An = conv(A, [1 -1]);
-% nA = length(An)-1
-% nB = length(B)-1
-% d = nA - nB
-% nS = nB + d - 1
-% nR = nA -1
-% M = [[An'; 0;0], [0; An';0], [0;0; An'],[B';0; 0;0; 0],[0;B'; 0;0; 0], [0;0;B'; 0; 0], [0;0; 0; B'; 0], [0;0;0; 0; B']]
-% x = inv(M) * [P';0;0;0;0;0]   % [1; s1; s2; ...; r0; r1; ...]
+% regulation with integrator and opening the loop
+M = [[A';0;0;0;0] [0;A';0;0;0], [0;0;A';0;0],[0;0;0;A';0],[0;0;0;0;A'],[B';0;0;0;0],[0;B';0;0;0], [0;0;B';0;0], [0;0;0;B';0], [0;0;0;0;B']]
+x = inv(M) * [Pd';0;0;0;0;0;0;0]   % [1; s1; s2; ...; r0; r1; ...]
 
 S = [];
-T = [];
 R = [];
 for i = 1:nS+1
     S(i) = x(i);
@@ -113,22 +88,21 @@ end
 for i = 1:nR+1
     R(i) = x(i + nS+1);
 end
-% S = conv(S,[1 -1])
-% R = conv(R, [1 1])
 S
 R
-T = evalfr(tf(R, 1), 1)   % with integrator
-% T = P / evalfr(tf(Bprev, 1), 1)   % different dynamic tracking and regulation
-% T = evalfr(tf(P, 1), 1) / evalfr(tf(Bprev, 1), 1)   %same dynamic tracking and regulation
+T = [];
+% T = Pd / evalfr(tf(Bprev, 1), 1)   % different dynamic tracking and regulation
+% T = evalfr(tf(Pd, 1), 1) / evalfr(tf(Bprev, 1), 1)   %same dynamic tracking and regulation
+T = evalfr(tf(R, 1), 1)   % with integrator in the controller
 
-Pcl=conv(A,S)+conv(Bprev,R)
-nP = length(Pcl)-1
+P=conv(A,S)+conv(B,R)
+nP = length(P)-1
 if nP > nA + nB + d -1
     error('P does not fit the required size')
 end
 
 
-sys_int = tf(conv(B,T),Pcl,Ts,'variable','z^-1')
+sys_int = tf(conv(B,T),P,Ts,'variable','z^-1')
 figure
 step(sys_int)
 
