@@ -1,4 +1,4 @@
-# Automatique-et-commande-numérique
+# Control Systems
 
 EPFL project | Automatique et commande numérique
 
